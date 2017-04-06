@@ -1,0 +1,64 @@
+2.82
+
+a. it does not always yields 1 --
+   if x is INT_MIN and y is any negative number that is not INT_MIN
+   when the x is multiplied by a negative it stays as it is -
+   -INT_MIN = INT_MIN - which will be smaller than -y.
+
+   ~x = -(x+1)
+   ~x + 1 = -x
+   ~0x800 + 1 = -0x800
+   0x7FF + 1 = -x
+   0x800 = -0x800
+   -INT_MIN = INT_MIN 
+
+b. always yields 1 --
+   we can evaluate the left shift as being * 2^n, which would
+   allow us to evaluate the function as 16x+16y+y-x = 17x+15y.
+
+   this occurs regardless of overloading, because both sides are
+   mod 2^n, due to them being the same type.
+
+c. always yields 1 --
+   ~x + ~y + 1 = -(x+1) -(y+1) + 1 = -x - y -1 = -(x+y+1) = ~(x+y)
+
+d. always yields 1 --
+   the unsigned nature does not change the bit patterns of the integers
+   allowing us to remove them from the equation leading to :
+
+   x - y = -(y-x), which is always true
+
+e. always yields 1 --
+   the left shift and right shift operations is essentially subtracting 0 to 3
+   from the value (ex. 0x111 becomes 0x100 (-1 -> -4) and 0x011 becomes 0x000
+   (3 becomes 0).
+
+   as such, in the worst case, it will at least be equal: x-0 <= 0, which is true.
+
+   this takes into account overloading, as 0x100.. stays as 0x100.. and 0x011.. stays
+   as 0x100..
+
+f. x >> 1 == (ux >> 1) + (ux & (-1 << 31))
+   always yields 1 --
+
+   if x >= 0x80..
+      ux & (-1 << 31) will evaluate to 0x800..
+      ux >> 1 + 0x800.. -> this shift everything to the right and make the highest
+      	 order digit to 1
+
+      The same thing occurs in an arithmetic shift of a signed negative int
+
+   if x < 0x800..
+      ux & (-1 << 31) will evaluate to 0x000..
+      ux >> 1 + 0x000.. -> this shifts everything to the right and make the highest
+         order digit to 0
+
+      The same thing occurs in an arithmetic shift of a signed positive int
+
+g. x % 128 == (x & 127)
+   this does not always yield 1.
+
+   ex. x = -1
+       x % 128 == -1
+       x & 127 == x & 00..11111111 = 127
+

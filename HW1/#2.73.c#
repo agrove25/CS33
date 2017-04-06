@@ -1,0 +1,44 @@
+#include <stdio.h>
+#include <limits.h>
+
+int saturating_add(int x, int y) {
+  int sum = x + y;
+  
+  // has a value of 0 if posOverflow occured
+  int posOverflow = (sum & INT_MIN) && !(x & INT_MIN) && !(y & INT_MIN);
+    
+  // has a value of 0 if negOverflow occured
+  int negOverflow = !(sum & INT_MIN) && (x & INT_MIN) && (y & INT_MIN);
+    
+  (posOverflow && (sum = INT_MAX));
+  (negOverflow && (sum = INT_MIN));
+
+  return sum;
+}
+
+/* Testing */
+
+/*
+int printTest(int x, int y) {
+  printf("%i + %i = %i\n\n", x, y, saturating_add(x, y));
+}
+
+int main(void) {
+  printf("%i", 1 && 1 && 1);
+  
+  printTest(INT_MAX, 0);
+  printTest(INT_MAX, -4);
+  printTest(INT_MAX, 2);
+
+  printTest(0, 0);
+  printTest(0, 2);
+  printTest(2, 2);
+  printTest(0, -2);
+  printTest(-2, -2);
+
+  printTest(INT_MIN, 0);
+  printTest(INT_MIN, -1);
+  printTest(INT_MIN, 2);
+}
+
+*/
