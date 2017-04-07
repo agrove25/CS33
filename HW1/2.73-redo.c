@@ -11,7 +11,10 @@ int saturating_add(int x, int y) {
   return sum;
 }
 
-int printTest(int x, int y) {
+/* Testing */
+
+/*
+void printTest(int x, int y) {
   printf("%i + %i = %i\n\n", x, y, saturating_add(x, y));
 }
 
@@ -30,4 +33,4 @@ int main(void) {
   printTest(INT_MIN, -1);
   printTest(INT_MIN, 2);
 }
-
+*/

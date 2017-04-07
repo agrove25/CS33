@@ -19,7 +19,7 @@ int saturating_add(int x, int y) {
 /* Testing */
 
 /*
-int printTest(int x, int y) {
+void printTest(int x, int y) {
   printf("%i + %i = %i\n\n", x, y, saturating_add(x, y));
 }
 
