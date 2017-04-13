@@ -167,17 +167,19 @@ int bitCount(int x) {
    * through said numbers.
    */
 
-  int mask = 0x11 | 0x11 << 8;   //0001000100010001
+  int mask = 0x11 | (0x11 << 8);   //0001000100010001
   int total;
   int count;
-  mask = mask | mask << 16;      //0001 x8 = 32;
+  mask = mask | (mask << 16);      //0001 x8 = 32;
 
   total = x & mask;
   total += (x >> 1) & mask;
   total += (x >> 2) & mask;
   total += (x >> 3) & mask;
   
-  count = total & 0x03;
+  
+  
+  count = total & 0x07;
   count += (total >> 4) & 0x07;
   count += (total >> 8) & 0x07;
   count += (total >> 12) & 0x07;
@@ -185,7 +187,7 @@ int bitCount(int x) {
   count += (total >> 20) & 0x07;
   count += (total >> 24) & 0x07;
   count += (total >> 28) & 0x07;
-
+  
   return count;
 
   // TODO: we can create multiple masks to streamline the procecss.. this does
@@ -234,11 +236,11 @@ int bitRepeat(int x, int n) {
   base = base >> offset;            // is not arithmetic
 
   repeat = base | base << n;
-  repeat = repeat | (repeat << (0x1F & (n << 1)));
-  repeat = repeat | (repeat << (0x1F & (n << 2)));
-  repeat = repeat | (repeat << (0x1F & (n << 3)));
-  repeat = repeat | (repeat << (0x1F & (n << 4)));
-
+  repeat = repeat | (repeat << ((n << 1) * !!(16/n)));
+  repeat = repeat | (repeat << ((n << 2) * !!(8/n)));
+  repeat = repeat | (repeat << ((n << 3) * !!(4/n)));
+  repeat = repeat | (repeat << ((n << 4) * !!(2/n)));
+  
   return repeat;
 }
 
