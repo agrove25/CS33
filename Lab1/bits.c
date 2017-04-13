@@ -141,14 +141,14 @@ NOTES:
  */
 int bang(int x) {
   /* we use the special property of negatives, where the negative of zero is zero */
-  int neg = ~x + 1;
-
   /*
    * if it is the case that x is nonzero, either x or the negative will have a 1 in
    * the sign bit, allowing the inner equation to become 1. It is then trivial to
    * reverse this sign.
    */
   
+  int neg = ~x + 1;
+
   return ~((x >> 31)| (neg >> 31)) & 1;
 }
 
@@ -168,17 +168,16 @@ int bitCount(int x) {
    */
 
   int mask = 0x11 | 0x11 << 8;   //0001000100010001
+  int total;
+  int count;
   mask = mask | mask << 16;      //0001 x8 = 32;
 
-  int a = x & mask;
-  int b = (x >> 1) & mask;
-  int c = (x >> 2) & mask;
-  int d = (x >> 3) & mask;
+  total = x & mask;
+  total += (x >> 1) & mask;
+  total += (x >> 2) & mask;
+  total += (x >> 3) & mask;
   
-  int total = a + b + c + d;
-  // 14 operations
-
-  int count = total & 0x03;
+  count = total & 0x03;
   count += (total >> 4) & 0x07;
   count += (total >> 8) & 0x07;
   count += (total >> 12) & 0x07;
@@ -204,7 +203,7 @@ int bitCount(int x) {
 int bitOr(int x, int y) {
   /* De Morgan's Law */
 
-  return ~(~x & ~y)
+  return ~(~x & ~y);
 }
 
 /*
@@ -222,17 +221,19 @@ int bitOr(int x, int y) {
  *   Rating: 4
  */
 int bitRepeat(int x, int n) {
-  int offset = 32 - n;
-  unsigned base = x << offset;      // this is needs to be unsigned so that right shift
-  base = base >> offset;            // is not arithmetic
-
   /*  
-   *  with the base in store, we are able to repeatedly append this base to a number. In order
+   *  with the base (which we attain through left shifting then right shifting
+   *  in store, we are able to repeatedly append this base to a number. In order
    *  to ensure that n * up to 16 does not excceed the word count, which would have unspecified
    *  consequences, we and it with 0x1F.
    */
 
-  int repeat = base | base << n;
+  int repeat;
+  int offset = 32 - n;
+  unsigned base = x << offset;      // this is needs to be unsigned so that right shift
+  base = base >> offset;            // is not arithmetic
+
+  repeat = base | base << n;
   repeat = repeat | (repeat << (0x1F & (n << 1)));
   repeat = repeat | (repeat << (0x1F & (n << 2)));
   repeat = repeat | (repeat << (0x1F & (n << 3)));
@@ -252,11 +253,11 @@ int bitRepeat(int x, int n) {
  */
 int fitsBits(int x, int n) {
   // neg will be 0 if x is positive, and -1 if x is negative
-  int neg = x >> 31;
-
   // if x > 0, x & ~neg = x, ~x & neg = 0
-  // if x < 0, x & ~neg = 0, ~x & neg = -(x + 1)
-   
+  // if x < 0, x & ~neg = 0, ~x & neg = -(x + 1) <-- this is important
+  
+  int neg = x >> 31;
+ 
   return !((x & ~neg | ~x & neg) >> (n + ~0));      // note: ~0 is equivalent to negative 1, which we need because we aren't
                                                     // allowed to use subtraction
 }
@@ -270,6 +271,7 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int getByte(int x, int n) {
+  /* left shifts a number by n*8, and then masks it to take only the last 16 bits */
   return (x >> (n << 3)) & 0xFF;
 }
 
@@ -281,6 +283,10 @@ int getByte(int x, int n) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
+  /* the return expression resolves if it is less than or equal to zero, so all that
+   * needs to happen is that we make x the difference between x and y.
+   */
+
   x = x + ~y + 1;     // x = x - y;
   return !(x & ~(x >> 31));
 }
@@ -292,6 +298,11 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 3
  */
 int isPositive(int x) {
+  /* if the x is negative, the ~(x >> 31) will be 0, which will evaluate the expression to 0.
+   * when double banged it will remain to be zero. if the x is positive, that expression will be -1
+   * which when it is AND-ed, will result in x, which will double bang to 1.
+   */
+
   return !!(x & ~(x >> 31));
 }
 /* 
@@ -322,5 +333,7 @@ int logicalShift(int x, int n) {
  *   Rating: 1
  */
 int tmin(void) {
+  /* shifting 1000 0000 all the way so that the entire bit patter starts with 1 and has remaining zeroes */
+
   return 0x80 << 24; 
 }
