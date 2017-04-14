@@ -285,12 +285,23 @@ int getByte(int x, int n) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  /* the return expression resolves if it is less than or equal to zero, so all that
-   * needs to happen is that we make x the difference between x and y.
+  /*  there are three main parts to the return statement.
+   *     1. if there is a signmismatch and sign x is negative, it will result in 1
+   *     2. if there is not a signmismatch and the sign of the difference is
+   *        positive, then it will result in 1.
+   *     3. if the two values are equal it will result it 1.
+   *
+   *  this complexity is necessary to take into account overflow.
+   *  all these values are or-ed togethere, so if any single one results in 1,
+   *  the funciton will return 1.
    */
 
-  x = x + ~y + 1;     // x = x - y;
-  return !(x & ~(x >> 31));
+  int signx = x >> 31;
+  int signy = y >> 31;
+  int diff = x + ~y + 1;  // -1 if x < y
+  int signMismatch = signx ^ signy; // 0 if sign x = sign y, -1 if x != y
+  
+  return !!((signMismatch) & signx) | (!(signMismatch) & (diff >> 31)) | !(x ^ y);
 }
 /* 
  * isPositive - return 1 if x > 0, return 0 otherwise 
@@ -300,9 +311,8 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 3
  */
 int isPositive(int x) {
-  /* if the x is negative, the ~(x >> 31) will be 0, which will evaluate the expression to 0.
-   * when double banged it will remain to be zero. if the x is positive, that expression will be -1
-   * which when it is AND-ed, will result in x, which will double bang to 1.
+  /* x >> 31 will result in -1 if x is negative, or 0 if x is positive, and then
+   * we bang it to get appropriate 0 and 1.
    */
 
   return !!(x & ~(x >> 31));
@@ -320,12 +330,14 @@ int logicalShift(int x, int n) {
    * we can later & with the arithmetically right shifted x to result in a logical shift. We do need to
    * take heed to the special case of if n is 0 however, which we take into account by shifting it left
    * !n, which would result in 1 if n was 0, completing the mask with 1111 and oring it with 1 to fill 
-   * the last bit with 1 (it is always 1 due to the limitations on n).
+   * the last bit with 1 (it is always 1 due to the limitations on n). To make sure
+   * we are also not shifting by a negative we use our mask once again.
    */
 
   int mask = (0x7F << 24) | (0xFF << 16) | (0xFF << 8) | 0xFF;
-  mask = (mask << !n) >> (n) | 1;
-
+  mask = ((mask << !n) >> ((n + ~0) & mask)) | 1;
+  
+  printf("%x\n", mask);
   return (x >> n) & mask; 
 }
 /* 
