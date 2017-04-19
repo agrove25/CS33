@@ -1,7 +1,7 @@
 /* 
  * CS:APP Data Lab 
  * 
- * Andrew Grove --- 304785991
+ * <Please put your name and userid here>
  * 
  * bits.c - Source file with your solutions to the Lab.
  *          This is the file you will hand in to your instructor.
@@ -131,7 +131,6 @@ NOTES:
 
 
 #endif
-
 /* 
  * bang - Compute !x without using !
  *   Examples: bang(3) = 0, bang(0) = 1
@@ -139,19 +138,17 @@ NOTES:
  *   Max ops: 12
  *   Rating: 4 
  */
-int bang(int x) {
-  /* we use the special property of negatives, where the negative of zero is zero */
-  /*
-   * if it is the case that x is nonzero, either x or the negative will have a 1 in
-   * the sign bit, allowing the inner equation to become 1. It is then trivial to
-   * reverse this sign.
-   */
-  
-  int neg = ~x + 1;
-
-  return ~((x >> 31)| (neg >> 31)) & 1;
+int bang(int x)
+{
+  /*We combine x with its complement plus 1 to get a 1 in its leading
+    bit, which would exist if x is not 0. This is ensured by the fact that
+    ~x+1 would have a 0 in its spot if x was originally all 0's, as the
+    complement of that would be all 1's, or -1, which is 0 after adding 1.
+    As such, that combination would result in a 1 appearing in the leading
+    bit for all numbers except 0. I then shift this to the left 31 times to
+    get the leading bit to the first bit, and mask with 1 to get the answer*/
+  return ~((x|(~x+1))>>31)&1;
 }
-
 /*
  * bitCount - returns count of number of 1's in word
  *   Examples: bitCount(5) = 2, bitCount(7) = 3
@@ -160,41 +157,8 @@ int bang(int x) {
  *   Rating: 4
  */
 int bitCount(int x) {
-  /* this works through the creation of a mask that will do multiple checks for the last order
-   * bit in a set at one time. Through this method, the number of ones in every 4 bits is inserted into 
-   * the corresponding places. This is totaled up, resulting in a number for every 4 bits that 
-   * correspond to how many ones there were orginally. All that is left to do is take parse
-   * through said numbers.
-   */
-
-  int mask = 0x11 | (0x11 << 8);   //0001000100010001
-  int total;
-  int count;
-  mask = mask | (mask << 16);      //0001 x8 = 32;
-
-  total = x & mask;
-  total += (x >> 1) & mask;
-  total += (x >> 2) & mask;
-  total += (x >> 3) & mask;
-  
-  
-  
-  count = total & 0x07;
-  count += (total >> 4) & 0x07;
-  count += (total >> 8) & 0x07;
-  count += (total >> 12) & 0x07;
-  count += (total >> 16) & 0x07;
-  count += (total >> 20) & 0x07;
-  count += (total >> 24) & 0x07;
-  count += (total >> 28) & 0x07;
-  
-  return count;
-
-  // TODO: we can create multiple masks to streamline the procecss.. this does
-  // reach a point where it is inefficient though, as due to the constraints
-  // it takes ~3 operations to create said mask.
+  return 2;
 }
-
 /* 
  * bitOr - x|y using only ~ and & 
  *   Example: bitOr(6, 5) = 7
@@ -203,11 +167,11 @@ int bitCount(int x) {
  *   Rating: 1
  */
 int bitOr(int x, int y) {
-  /* De Morgan's Law */
-
-  return ~(~x & ~y);
+  /*masking the complements of x and y returns all of the bits
+    that both x and y don't have, aka is 0. Complementing this
+    naturally returns all of the bits that either x or y has.*/
+  return ~(~x&~y);
 }
-
 /*
  * bitRepeat - repeat x's low-order n bits until word is full.
  *   Can assume that 1 <= n <= 32.
@@ -223,27 +187,20 @@ int bitOr(int x, int y) {
  *   Rating: 4
  */
 int bitRepeat(int x, int n) {
-  /*  
-   *  with the base (which we attain through left shifting then right shifting
-   *  in store, we are able to repeatedly append this base to a number. In order
-   *  to ensure that n * up to 16 does not excceed the word count, which would have unspecified
-   *  consequences, we and it with 0x1F.
-   */
-
-  int repeat;
-  int offset = 32 - n;
-  unsigned base = x << offset;      // this is needs to be unsigned so that right shift
-  base = base >> offset;            // is not arithmetic
-
-  repeat = base | base << n;
-  repeat = repeat | (repeat << ((n << 1) * !!(16/n)));
-  repeat = repeat | (repeat << ((n << 2) * !!(8/n)));
-  repeat = repeat | (repeat << ((n << 3) * !!(4/n)));
-  repeat = repeat | (repeat << ((n << 4) * !!(2/n)));
-  
-  return repeat;
+  /*I shift the x by range amount to the left, then to the right, to isolate the first n
+    bits of the number. Then I shift it to the left by n times and add it to the original
+    to get 2 repeats, then do that 2 times, 4 times, 8 times, and 16 times such that at the
+    end, the word is filled up. The constant repetition is to avoid situations where
+    x is shifted more than 32 times, which would result in undefined behavior.*/
+  int range = 32-n;
+  x = (x<<range)>>(range);
+  x = x|x<<n;
+  x = x|x<<n<<n;
+  x = x|x<<n<<n<<n<<n;
+  x = x|x<<n<<n<<n<<n<<n<<n<<n<<n;
+  x = x|x<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n<<n;
+  return x;
 }
-
 /* 
  * fitsBits - return 1 if x can be represented as an 
  *  n-bit, two's complement integer.
@@ -254,16 +211,9 @@ int bitRepeat(int x, int n) {
  *   Rating: 2
  */
 int fitsBits(int x, int n) {
-  // neg will be 0 if x is positive, and -1 if x is negative
-  // if x > 0, x & ~neg = x, ~x & neg = 0
-  // if x < 0, x & ~neg = 0, ~x & neg = -(x + 1) <-- this is important
   
-  int neg = x >> 31;
- 
-  return !((x & ~neg | ~x & neg) >> (n + ~0));      // note: ~0 is equivalent to negative 1, which we need because we aren't
-                                                    // allowed to use subtraction
+  return 2;
 }
-
 /* 
  * getByte - Extract byte n from word x
  *   Bytes numbered from 0 (LSB) to 3 (MSB)
@@ -273,10 +223,11 @@ int fitsBits(int x, int n) {
  *   Rating: 2
  */
 int getByte(int x, int n) {
-  /* left shifts a number by n*8, and then masks it to take only the last 16 bits */
-  return (x >> (n << 3)) & 0xFF;
+  /*shifts the word x so that the nth byte is in the first byte. We do this
+    by shifting it by 8*n times, since 8 is the size of a byte. Then
+    masks the int to get the answer.*/
+  return (x>>(n<<3))&0xFF;
 }
-
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
  *   Example: isLessOrEqual(4,5) = 1.
@@ -285,23 +236,10 @@ int getByte(int x, int n) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  /*  there are three main parts to the return statement.
-   *     1. if there is a signmismatch and sign x is negative, it will result in 1
-   *     2. if there is not a signmismatch and the sign of the difference is
-   *        positive, then it will result in 1.
-   *     3. if the two values are equal it will result it 1.
-   *
-   *  this complexity is necessary to take into account overflow.
-   *  all these values are or-ed togethere, so if any single one results in 1,
-   *  the funciton will return 1.
-   */
-
-  int signx = x >> 31;
-  int signy = y >> 31;
-  int diff = x + ~y + 1;  // -1 if x < y
-  int signMismatch = signx ^ signy; // 0 if sign x = sign y, -1 if x != y
-  
-  return !!((signMismatch) & signx) | (!(signMismatch) & (diff >> 31)) | !(x ^ y);
+  int negY = ;
+  int negX = ;
+  int bothNeg = ;
+  return 2;
 }
 /* 
  * isPositive - return 1 if x > 0, return 0 otherwise 
@@ -310,13 +248,16 @@ int isLessOrEqual(int x, int y) {
  *   Max ops: 8
  *   Rating: 3
  */
-int isPositive(int x) {
-  /* x >> 31 will result in -1 if x is negative, or 0 if x is positive. 
-   * We then and it with x to make sure that x is not zero and then
-   * we bang it to get appropriate 0 and 1.
-   */
-
-  return !!(x & ~(x >> 31));
+int isPositive(int x) 
+{
+  /*this shifts x to the right 31 times to put the leading bit
+    into the first bit, then gets the complement of that. Then
+    if we mask this with !(!x), which is 1 if x is not zero, and
+    0 if x is zero. As such, if x is not zero, we will get 1 
+    if the first bit was originally 0, and 1 if the first bit 
+    was origianlly 1. If x was 0, then we would do 0 mask 0, which
+    returns 0*/
+  return (~(x>>31))&!(!x);
 }
 /* 
  * logicalShift - shift x to the right by n, using a logical shift
@@ -327,18 +268,8 @@ int isPositive(int x) {
  *   Rating: 3 
  */
 int logicalShift(int x, int n) {
-  /* we create a mask that is 0111... so that an arithmetic right shift would lead to more zeroes that
-   * we can later & with the arithmetically right shifted x to result in a logical shift. We do need to
-   * take heed to the special case of if n is 0 however, which we take into account by shifting it left
-   * !n, which would result in 1 if n was 0, completing the mask with 1111 and oring it with 1 to fill 
-   * the last bit with 1 (it is always 1 due to the limitations on n). To make sure
-   * we are also not shifting by a negative we use our mask once again.
-   */
-
-  int mask = (0x7F << 24) | (0xFF << 16) | (0xFF << 8) | 0xFF;
-  mask = ((mask << !n) >> ((n + ~0) & mask)) | 1;
   
-  return (x >> n) & mask; 
+  return 2;
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -347,7 +278,8 @@ int logicalShift(int x, int n) {
  *   Rating: 1
  */
 int tmin(void) {
-  /* shifting 1000 0000 all the way so that the entire bit pattern starts with 1 and has remaining zeroes */
-
-  return 0x80 << 24; 
+  /*the minimum integer is basically the smallest int, which is represented by a 
+    1 in the leading bit, followed by all 0's. We can do this by shifting the int 1 
+    to the left 31 times.*/
+  return 1<<31;
 }
