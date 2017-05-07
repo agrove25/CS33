@@ -1,0 +1,22 @@
+gdb ~eggert/bin64/bin/emacs-25.2
+   loaded the program into the gdb debugger
+
+break Ftimes
+   set a breakpoint at the specified function
+
+set disassemble-next-line on
+   allows us to examine the machine language code (rather than C)
+
+set logging on
+   allows us to automatically record output into gdb.txt (rather than copying
+   and pasting repeatedly)
+
+r -Q -batch -eval '(print (* 1250284240 -1844255039))'
+   runs the tested command (which will call Ftimes and pause the debugger)
+
+Used commands to examine the program:
+   si: 	      	 	 step into, or move the program by one ML line
+   info registers:	 get values for all the registers
+   info $rax		 get values for rax (or any other register)
+
+repeat commands till Ftimes returns.	 

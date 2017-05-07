@@ -1,0 +1,54 @@
+-O2 case:
+
+testovf:
+   xorl    %eax, %eax
+   ret
+   
+the optimizations due to 02 takes into account overflow. It realizes that
+in all cases, the equation will logically result in 0.
+
+
+
+-fwrapv case:
+
+testovf:
+   movabsq $9223372036854775807, %rax
+   addq    %rdi, %rax
+   cmpq    %rax, %rdi
+   setg    %al
+   ret
+
+in this case, the machine code is less optimized, where the code actually
+does the operations specified in the source code. When any positive n
+is added to long_max, overflow would occur, and return 1.
+
+
+
+-fsanitize=undefined:
+
+testovf:
+.LFB0:
+        pushq   %rbp
+        pushq   %rbx
+        movabsq $9223372036854775807, %rdx
+        movq    %rdi, %rbp
+        movq    %rdi, %rbx
+        subq    $8, %rsp
+        addq    %rdx, %rbp
+        jo      .L6
+.L2:
+        cmpq    %rbp, %rbx
+        setg    %al
+        addq    $8, %rsp
+        popq    %rbx
+        popq    %rbp
+        ret
+.L6:
+        movq    %rdi, %rsi
+        movl    $.Lubsan_data0, %edi
+        call    __ubsan_handle_add_overflow
+        jmp     .L2
+
+this adds a lot more machine code. It checks if there is overflow, and if so jumps to L6, where
+it calls to handle_add_overflow, then continues to do comparisons. Otherwise, it'll just go straight
+to comparing.

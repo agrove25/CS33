@@ -1,0 +1,12 @@
+O2 case:
+
+testovf:
+   xorl    %eax, %eax
+   ret
+   
+this occurs due to the O2 flag, which optimizes it heavily. Due to the right
+shift component, n has to be positive. Due to the 922..., which is the max
+long limit, any given positive number will cause overflow. These two
+cases are undefined behavior, and the compiler can return whatever
+it wants, in this case, zero.
+

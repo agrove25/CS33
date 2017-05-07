@@ -1,0 +1,27 @@
+1.	the instructions in the trace did not provide the correct mathematical result because of this command:
+	lea 0x2(,%rbp,4),%rax. The register rbp is such a high value that multiplying it by 4 results in
+	extreme overflow.
+
+2.	This number first comes from data.c, i.e. the corresponding source code given to us. We find
+	this command initialized by the reteurning some kind of value named MOST_NEGATIVE_FIXNUM.
+
+	We grep through the entirety of the src folder to find the definition, which is located in lisp.h
+	When accessing this file, we find that this value is equal to -1 - MOST_POSITIVE_FIXNUM, which in
+	turn is equal to EMACS_INT_MAX >> INTTYPEBITS. Further searching allows us to identify that
+	INTTYPEBITS is equal to 2, and EMACS_INT_MAX is equal to LONG_MAX, which is 0x7ff...  This shifted
+	by two then is equal to 2305843009213693951, which when is subtracted from -1, gives us the value
+	of -2305843009213693952.
+
+3.	This is because the result of this multiplication operation will be masked with 0x3f...
+	When the result of most-positive-fixnum squared is done in the computer, the overflow and-ed
+	with 0x3ff.. is equal to 1.
+
+4.	If we use fwrapv, emeacs itself would not run into any problems in of itself. However, the
+	wrong answer would still be obtained.
+
+5.	There contains an issue in lib/time_rz.c that is crashing the emacs file. This issue takes the form of
+	an input that is too long, which is a certain string is too long. This, when given as an input
+	in emacs_setenv_TZ, and is used to str_copy, is too large, causing it to overwrite some bytes
+	that have not been set aside for that string to use.
+	
+	
