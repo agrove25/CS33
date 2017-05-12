@@ -1,0 +1,19 @@
+answer.txt
+
+3.60 (loop.c)
+   a. 	x = %rdi
+   	  	n = %rsi
+   	  	result = %rax
+   	  	mask = %edx
+
+   b. 	result = 0;
+      	mask = 1;
+
+   c. 	it jumps if mask does not equal zero
+
+   d.	mask gets shifted left by n
+
+   e. 	result gets ored by the and of x and mask
+
+   f.	look at seperate file
+

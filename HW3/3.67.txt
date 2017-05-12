@@ -1,0 +1,52 @@
+a.
+
+-0 (rsp)				
+-8
+-16
+-24
+-32
+-40
+-48
+-56
+-64				
+-72				z
+-80				&z			// part of strA	(long *p)
+-88				y			// part of strA (long a[1])
+-96				x			// part of strA (long a[0])
+-104
+
+b. 	eval passes a location in the stack for the future strB r to be stored.
+
+c.  it uses the new rsp (which is basically the old rsp that was prev. subtracted by 108 minus an
+	additional 8 for the rip). It adds 24 to access *p, and 16 and 8 to acces a[1] and a[0] of struct
+	s.
+
+d.	it uses the %rdi that it assigned to location 64+%rsp. adds 24 to set r.q, 16 to set u[1], and
+	8 to set u[0].
+
+e.
+
+-0 (original rsp)				
+-8				
+-16				r.q			
+-24				r.u[1] = x				
+-32				r.u[0] = y		
+-40	(%rdi)			
+-48
+-56
+-64				
+-72				z
+-80				&z			// part of strA	(long *p)
+-88				y			// part of strA (long a[1])
+-96	(%rcx5)		x			// part of strA (long a[0])
+-104 			%rip
+-112 (rsp9)
+
+f.
+
+structure values are not necessarily passed in and returned like ordinary variables. The compiler
+will decided accordingly what the %rdi and %rax is. In this example, while one would thing %rdi
+would point to struct s, this was not the case. Perhaps the compiler did not do this because
+it already knew where s was located through the use of rsp. Instead, %rdi specified free location
+for the struct r to be stored, instead of using rax to pass an address for this location. Doing
+this allowed for eval to know where everything was without having to follow addresses around.

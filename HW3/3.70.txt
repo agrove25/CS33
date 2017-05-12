@@ -1,0 +1,8 @@
+a.	e1.p = 0
+	e1.y = 8
+	e2.x = 0
+	e2.next = 8
+
+b. it would require 16 bytes
+
+c. up->e2.x = *(e2.next->e1.p) - e2.next->e1.y;
