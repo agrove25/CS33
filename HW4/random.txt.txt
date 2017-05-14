@@ -1,0 +1,12 @@
+2.89
+
+1. 	always yields 1.
+2. 	does not always yield 1
+		for example, if x = INT_MIN;
+		* for this problem -fwrapv must be active*
+
+3. always yields 1. (depends on -fwrapv)
+4. does not always yield 1.
+	for example if x = 7, y = 659894985, and z = INT_MAX
+
+5. always yields 1.
