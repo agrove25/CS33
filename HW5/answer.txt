@@ -1,0 +1,12 @@
+12.18
+
+unsafe
+safe
+unsafe
+
+12.24
+
+Most likely no. There exists pointers in the parameters of the RIO read function, 
+which would imply if it was reentrant, it is implicitly reentrant. However,
+more likely than not multiple threads will mistakenly use the same read buffer,
+causing it to not be reentrant at all.
